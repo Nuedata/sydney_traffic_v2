@@ -3,64 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sydney Hubs Live Weather (No-Key API)</title>
+    <title>Sydney Smart Transit Weather Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-6">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-4 sm:p-6">
 
-    <div class="max-w-xl w-full bg-slate-800 shadow-xl rounded-2xl p-6 mt-10 border border-slate-700">
-        <h1 class="text-2xl font-bold text-emerald-400 mb-1">🌤️ Sydney Hubs Weather Monitor</h1>
-        <p class="text-xs text-slate-400 mb-6">Fetching live metrics using the open-source, keyless Open-Meteo API.</p>
+    <div class="max-w-2xl w-full bg-slate-800 shadow-xl rounded-2xl p-6 mt-6 border border-slate-700/80">
+        <!-- Header Info -->
+        <div class="flex justify-between items-start border-b border-slate-700/60 pb-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-emerald-400 tracking-tight">🌤️ Sydney Hubs Climate Analytics</h1>
+                <p class="text-xs text-slate-400 mt-1">Live environmental micro-data across key transport zones via Open-Meteo.</p>
+            </div>
+            <span class="bg-slate-700 text-slate-300 text-[10px] uppercase tracking-wider px-2 py-1 rounded font-mono font-bold border border-slate-600">
+                Keyless Live Data
+            </span>
+        </div>
 
-        <div class="space-y-4" id="weatherLogs">
-            <!-- Data will load here dynamically -->
-            <p class="text-center text-sm text-slate-500 animate-pulse">Loading live conditions...</p>
+        <!-- Filter Component Menu -->
+        <div class="mb-6">
+            <span class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Filter Hub Classification:</span>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="filterHubs('all')" id="btn-all" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 shadow-md transition">
+                    📍 Show All Hubs
+                </button>
+                <button onclick="filterHubs('rail')" id="btn-rail" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">
+                    🚊 Rail Interchanges
+                </button>
+                <button onclick="filterHubs('ferry')" id="btn-ferry" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">
+                    🚢 Ferry Terminals
+                </button>
+            </div>
+        </div>
+
+        <!-- Dynamic Results Logs Container -->
+        <div class="space-y-3" id="weatherLogs">
+            <p class="text-center text-sm text-slate-500 animate-pulse py-12">Querying public servers...</p>
         </div>
     </div>
 
     <script>
-        // Coordinates for main Sydney transport hubs
+        // Expanded dataset with categories and extra tracking points
         const hubs = [
-            { name: "Central Station", lat: -33.8831, lon: 151.2065 },
-            { name: "Circular Quay", lat: -33.8617, lon: 151.2108 },
-            { name: "Parramatta Interchange", lat: -33.8169, lon: 151.0034 },
-            { name: "Chatswood Interchange", lat: -33.7972, lon: 151.1812 }
+            { name: "Central Station Hub", lat: -33.8831, lon: 151.2065, type: "rail" },
+            { name: "Parramatta Interchange", lat: -33.8169, lon: 151.0034, type: "rail" },
+            { name: "Chatswood Interchange", lat: -33.7972, lon: 151.1812, type: "rail" },
+            { name: "Circular Quay Wharves", lat: -33.8617, lon: 151.2108, type: "ferry" },
+            { name: "Manly Wharf", lat: -33.8001, lon: 151.2847, type: "ferry" }
         ];
 
-        async function fetchHubWeather() {
-            const container = document.getElementById('weatherLogs');
-            container.innerHTML = ''; // Clear loading text
+        let currentFilter = 'all';
+        let cachedWeatherData = {};
 
+        async function fetchAllData() {
             for (const hub of hubs) {
                 try {
-                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${hub.lat}&longitude=${hub.lon}&current=temperature_2m,wind_speed_10m`;
+                    // Expanded parameters to request Relative Humidity and Wind Direction
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${hub.lat}&longitude=${hub.lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m`;
                     const response = await fetch(url);
-                    
-                    if (!response.ok) throw new Error("Network issue");
+                    if (!response.ok) throw new Error();
                     const data = await response.json();
-
-                    // Render weather block
-                    const row = document.createElement('div');
-                    row.className = "flex justify-between items-center bg-slate-750 p-4 rounded-xl border border-slate-700/50 hover:border-emerald-500/30 transition";
-                    row.innerHTML = `
-                        <div>
-                            <h3 class="font-semibold text-white">${hub.name}</h3>
-                            <p class="text-xs text-slate-400">💨 Wind: ${data.current.wind_speed_10m} km/h</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xl font-bold text-emerald-400">${data.current.temperature_2m}°C</span>
-                        </div>
-                    `;
-                    container.appendChild(row);
-
+                    
+                    cachedWeatherData[hub.name] = data.current;
                 } catch (err) {
-                    console.error(err);
+                    console.error("Error loading network data for: " + hub.name);
                 }
             }
+            renderUI();
         }
 
-        // Run on page load
-        fetchHubWeather();
+        function filterHubs(type) {
+            currentFilter = type;
+            
+            // Update active states of toggle buttons UI visually
+            ['all', 'rail', 'ferry'].forEach(t => {
+                const btn = document.getElementById(`btn-${t}`);
+                if (t === type) {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 shadow-md transition";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600 transition";
+                }
+            });
+
+            renderUI();
+        }
+
+        function renderUI() {
+            const container = document.getElementById('weatherLogs');
+            container.innerHTML = ''; 
+
+            const filteredHubs = hubs.filter(h => currentFilter === 'all' || h.type === currentFilter);
+
+            filteredHubs.forEach(hub => {
+                const metrics = cachedWeatherData[hub.name];
+                if (!metrics) return;
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-750 p-4 rounded-xl border border-slate-700/40 flex justify-between items-center hover:border-slate-600 transition shadow-sm";
+                
+                // Construct enhanced information panel displaying humidity and wind direction
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs">${hub.type === 'rail' ? '🚊' : '🚢'}</span>
+                            <h3 class="font-semibold text-white text-sm sm:text-base">${hub.name}</h3>
+                        </div>
+                        <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-mono">
+                            <span>💨 Wind: ${metrics.wind_speed_10m}km/h (${metrics.wind_direction_10m}°)</span>
+                            <span>💧 Humid: ${metrics.relative_humidity_2m}%</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xl sm:text-2xl font-bold text-emerald-400 font-mono">${metrics.temperature_2m}°C</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Trigger immediate fetch sequence on script initialization
+        fetchAllData();
     </script>
 </body>
 </html>
