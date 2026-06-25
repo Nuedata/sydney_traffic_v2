@@ -4,7 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sydney Smart Transit Weather Dashboard</title>
+    <!-- Tailwind Framework -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        /* Bulletproof fallback classes to guarantee visual toggle works instantly */
+        .btn-active {
+            background-color: #10b981 !important; /* Emerald 500 */
+            color: #020617 !important; /* Slate 950 */
+            font-weight: 600;
+        }
+        .btn-inactive {
+            background-color: #334155 !important; /* Slate 700 */
+            color: #cbd5e1 !important; /* Slate 300 */
+        }
+    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-4 sm:p-6">
 
@@ -24,13 +37,13 @@
         <div class="mb-6">
             <span class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Filter Hub Classification:</span>
             <div class="flex flex-wrap gap-2">
-                <button onclick="filterHubs('all')" id="btn-all" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 shadow-md transition">
+                <button onclick="filterHubs('all')" id="btn-all" class="px-3 py-1.5 rounded-lg text-xs font-semibold btn-active transition shadow-md cursor-pointer">
                     📍 Show All Hubs
                 </button>
-                <button onclick="filterHubs('rail')" id="btn-rail" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">
-                    🚊 Rail Interchanges
+                <button onclick="filterHubs('rail')" id="btn-rail" class="px-3 py-1.5 rounded-lg text-xs font-semibold btn-inactive hover:bg-slate-600 transition cursor-pointer">
+                    𚊊 Rail Interchanges
                 </button>
-                <button onclick="filterHubs('ferry')" id="btn-ferry" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600 transition">
+                <button onclick="filterHubs('ferry')" id="btn-ferry" class="px-3 py-1.5 rounded-lg text-xs font-semibold btn-inactive hover:bg-slate-600 transition cursor-pointer">
                     🚢 Ferry Terminals
                 </button>
             </div>
@@ -43,7 +56,6 @@
     </div>
 
     <script>
-        // Expanded dataset with categories and extra tracking points
         const hubs = [
             { name: "Central Station Hub", lat: -33.8831, lon: 151.2065, type: "rail" },
             { name: "Parramatta Interchange", lat: -33.8169, lon: 151.0034, type: "rail" },
@@ -56,9 +68,10 @@
         let cachedWeatherData = {};
 
         async function fetchAllData() {
+            const container = document.getElementById('weatherLogs');
+            
             for (const hub of hubs) {
                 try {
-                    // Expanded parameters to request Relative Humidity and Wind Direction
                     const url = `https://api.open-meteo.com/v1/forecast?latitude=${hub.lat}&longitude=${hub.lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m`;
                     const response = await fetch(url);
                     if (!response.ok) throw new Error();
@@ -75,13 +88,15 @@
         function filterHubs(type) {
             currentFilter = type;
             
-            // Update active states of toggle buttons UI visually
+            // Switch structural styles directly via classList to guarantee execution
             ['all', 'rail', 'ferry'].forEach(t => {
                 const btn = document.getElementById(`btn-${t}`);
                 if (t === type) {
-                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 text-slate-950 shadow-md transition";
+                    btn.classList.add('btn-active');
+                    btn.classList.remove('btn-inactive');
                 } else {
-                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700 text-slate-300 hover:bg-slate-600 transition";
+                    btn.classList.remove('btn-active');
+                    btn.classList.add('btn-inactive');
                 }
             });
 
@@ -96,12 +111,15 @@
 
             filteredHubs.forEach(hub => {
                 const metrics = cachedWeatherData[hub.name];
-                if (!metrics) return;
+                
+                // Show placeholder dashes if API data is still streaming in
+                const temp = metrics ? `${metrics.temperature_2m}°C` : '--°C';
+                const wind = metrics ? `${metrics.wind_speed_10m}km/h (${metrics.wind_direction_10m}°)` : '--';
+                const humid = metrics ? `${metrics.relative_humidity_2m}%` : '--%';
 
                 const card = document.createElement('div');
-                card.className = "bg-slate-750 p-4 rounded-xl border border-slate-700/40 flex justify-between items-center hover:border-slate-600 transition shadow-sm";
+                card.className = "bg-slate-750 p-4 rounded-xl border border-slate-700/40 flex justify-between items-center shadow-sm";
                 
-                // Construct enhanced information panel displaying humidity and wind direction
                 card.innerHTML = `
                     <div class="space-y-1">
                         <div class="flex items-center gap-2">
@@ -109,19 +127,19 @@
                             <h3 class="font-semibold text-white text-sm sm:text-base">${hub.name}</h3>
                         </div>
                         <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 font-mono">
-                            <span>💨 Wind: ${metrics.wind_speed_10m}km/h (${metrics.wind_direction_10m}°)</span>
-                            <span>💧 Humid: ${metrics.relative_humidity_2m}%</span>
+                            <span>💨 Wind: ${wind}</span>
+                            <span>💧 Humid: ${humid}</span>
                         </div>
                     </div>
                     <div class="text-right">
-                        <span class="text-xl sm:text-2xl font-bold text-emerald-400 font-mono">${metrics.temperature_2m}°C</span>
+                        <span class="text-xl sm:text-2xl font-bold text-emerald-400 font-mono">${temp}</span>
                     </div>
                 `;
                 container.appendChild(card);
             });
         }
 
-        // Trigger immediate fetch sequence on script initialization
+        // Trigger immediate sequence
         fetchAllData();
     </script>
 </body>
