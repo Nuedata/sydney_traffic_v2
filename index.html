@@ -1,602 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sydney Live Traffic Dashboard</title>
-  <!-- Tabler Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/tabler-icons.min.css">
-  <style>
-    :root {
-      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      --color-text-primary: #111827;
-      --color-text-secondary: #6B7280;
-      --color-text-info: #185FA5;
-      --color-text-success: #0F6B4B;
-      --color-text-danger: #A32D2D;
-      --color-background-primary: #ffffff;
-      --color-background-secondary: #F3F4F6;
-      --color-background-info: #E6F1FB;
-      --color-background-success: #E6F7F1;
-      --color-background-danger: #FCEBEB;
-      --color-border-secondary: #D1D5DB;
-      --color-border-tertiary: #E5E7EB;
-      --color-border-info: #BFDBFE;
-      --color-border-success: #A7F3D0;
-      --color-border-danger: #FECACA;
-      --border-radius-md: 8px;
-      --border-radius-lg: 12px;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: #F9FAFB;
-      font-family: var(--font-sans);
-      color: var(--color-text-primary);
-      min-height: 100vh;
-    }
-
-    #app { max-width: 740px; margin: 0 auto; padding: 1rem; }
-
-    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
-    .topbar { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:1rem; flex-wrap:wrap; }
-    .title { font-size:18px; font-weight:500; color:var(--color-text-primary); }
-    .subtitle { font-size:12px; color:var(--color-text-secondary); margin-top:3px; }
-    .refresh-btn { background:none; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); padding:6px 10px; cursor:pointer; font-size:12px; color:var(--color-text-secondary); display:flex; align-items:center; gap:4px; white-space:nowrap; }
-    .refresh-btn:hover { background:var(--color-background-secondary); color:var(--color-text-primary); }
-    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:1rem; }
-    .stat { background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:10px 8px; text-align:center; }
-    .stat-num { font-size:20px; font-weight:500; }
-    .stat-label { font-size:11px; color:var(--color-text-secondary); margin-top:2px; }
-    .tabs { display:flex; border-bottom:0.5px solid var(--color-border-tertiary); margin-bottom:1rem; gap:0; }
-    .tab { padding:8px 14px; font-size:13px; cursor:pointer; color:var(--color-text-secondary); border-bottom:2px solid transparent; margin-bottom:-1px; background:none; border-top:none; border-left:none; border-right:none; }
-    .tab.active { color:var(--color-text-primary); border-bottom-color:var(--color-text-primary); font-weight:500; }
-    .tab:hover { color:var(--color-text-primary); }
-    .panel { display:none; }
-    .panel.active { display:block; }
-    .filter-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1rem; align-items:center; }
-    .btn { padding:5px 11px; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); background:var(--color-background-primary); color:var(--color-text-primary); font-size:12px; cursor:pointer; }
-    .btn:hover { background:var(--color-background-secondary); }
-    .btn.active { background:var(--color-background-info); color:var(--color-text-info); border-color:var(--color-border-info); }
-    select { padding:5px 10px; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); background:var(--color-background-primary); color:var(--color-text-primary); font-size:12px; cursor:pointer; }
-    input[type=date] { padding:5px 10px; border:0.5px solid var(--color-border-secondary); border-radius:var(--border-radius-md); background:var(--color-background-primary); color:var(--color-text-primary); font-size:12px; }
-    #map-container { border:0.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-lg); overflow:hidden; background:#dde8dd; height:340px; margin-bottom:1rem; position:relative; }
-    #map-svg { width:100%; height:100%; }
-    .legend { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:1rem; }
-    .legend-item { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--color-text-secondary); }
-    .legend-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
-    #incident-list { max-height:260px; overflow-y:auto; border:0.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-lg); }
-    .inc-item { padding:10px 14px; border-bottom:0.5px solid var(--color-border-tertiary); cursor:pointer; transition:background 0.1s; }
-    .inc-item:last-child { border-bottom:none; }
-    .inc-item:hover { background:var(--color-background-secondary); }
-    .inc-row { display:flex; align-items:flex-start; gap:8px; }
-    .inc-dot { width:8px; height:8px; border-radius:50%; margin-top:5px; flex-shrink:0; }
-    .inc-title { font-size:13px; font-weight:500; color:var(--color-text-primary); }
-    .inc-sub { font-size:12px; color:var(--color-text-secondary); margin-top:2px; }
-    .inc-meta { display:flex; align-items:center; gap:6px; margin-top:4px; flex-wrap:wrap; }
-    .badge { font-size:10px; padding:2px 7px; border-radius:10px; font-weight:500; }
-    .cam-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; }
-    .cam-card { border:0.5px solid var(--color-border-tertiary); border-radius:var(--border-radius-lg); overflow:hidden; background:var(--color-background-primary); }
-    .cam-thumb { width:100%; height:120px; background:var(--color-background-secondary); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
-    .cam-thumb img { width:100%; height:100%; object-fit:cover; }
-    .cam-thumb-placeholder { color:var(--color-text-secondary); font-size:12px; text-align:center; padding:8px; }
-    .cam-info { padding:8px 10px; }
-    .cam-name { font-size:12px; font-weight:500; color:var(--color-text-primary); }
-    .cam-loc { font-size:11px; color:var(--color-text-secondary); margin-top:2px; }
-    .cam-link { font-size:11px; color:var(--color-text-info); display:inline-flex; align-items:center; gap:3px; margin-top:4px; text-decoration:none; }
-    .hist-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:1rem; }
-    .hist-label { font-size:13px; color:var(--color-text-secondary); }
-    .notif-card { background:var(--color-background-secondary); border-radius:var(--border-radius-lg); padding:1rem 1.25rem; margin-bottom:1rem; }
-    .notif-title { font-size:14px; font-weight:500; color:var(--color-text-primary); margin-bottom:4px; }
-    .notif-sub { font-size:12px; color:var(--color-text-secondary); margin-bottom:12px; }
-    .notif-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:0.5px solid var(--color-border-tertiary); }
-    .notif-row:last-child { border-bottom:none; }
-    .notif-name { font-size:13px; color:var(--color-text-primary); }
-    .toggle { position:relative; width:36px; height:20px; cursor:pointer; }
-    .toggle input { opacity:0; width:0; height:0; }
-    .slider-tog { position:absolute; inset:0; background:var(--color-border-secondary); border-radius:10px; transition:0.2s; }
-    .slider-tog:before { content:''; position:absolute; width:14px; height:14px; left:3px; top:3px; background:white; border-radius:50%; transition:0.2s; }
-    .toggle input:checked+.slider-tog { background:#1D9E75; }
-    .toggle input:checked+.slider-tog:before { transform:translateX(16px); }
-    .no-data { padding:1.5rem; text-align:center; color:var(--color-text-secondary); font-size:13px; }
-    .loading { text-align:center; padding:2rem; color:var(--color-text-secondary); font-size:13px; }
-    .notif-banner { background:var(--color-background-success); border:0.5px solid var(--color-border-success); border-radius:var(--border-radius-md); padding:10px 14px; font-size:13px; color:var(--color-text-success); margin-bottom:1rem; display:none; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sydney Hubs Live Weather (No-Key API)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-6">
 
-<div id="app">
-  <h2 class="sr-only">Sydney live traffic dashboard with map, cameras, suburb filter, history and notifications</h2>
+    <div class="max-w-xl w-full bg-slate-800 shadow-xl rounded-2xl p-6 mt-10 border border-slate-700">
+        <h1 class="text-2xl font-bold text-emerald-400 mb-1">🌤️ Sydney Hubs Weather Monitor</h1>
+        <p class="text-xs text-slate-400 mb-6">Fetching live metrics using the open-source, keyless Open-Meteo API.</p>
 
-  <div class="topbar">
-    <div>
-      <div class="title"><i class="ti ti-traffic-lights" aria-hidden="true" style="font-size:18px;vertical-align:-2px;margin-right:6px"></i>Sydney live traffic</div>
-      <div class="subtitle" id="last-updated">Loading live data...</div>
-    </div>
-    <button class="refresh-btn" onclick="loadAll()"><i class="ti ti-refresh" aria-hidden="true"></i> Refresh</button>
-  </div>
-
-  <div id="notif-banner" class="notif-banner"></div>
-
-  <div class="stats">
-    <div class="stat"><div class="stat-num" style="color:#E24B4A" id="s-crash">—</div><div class="stat-label">Crashes</div></div>
-    <div class="stat"><div class="stat-num" style="color:#EF9F27" id="s-inc">—</div><div class="stat-label">Incidents</div></div>
-    <div class="stat"><div class="stat-num" style="color:#378ADD" id="s-rw">—</div><div class="stat-label">Roadworks</div></div>
-    <div class="stat"><div class="stat-num" style="color:#1D9E75" id="s-total">—</div><div class="stat-label">Total</div></div>
-  </div>
-
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('live',this)"><i class="ti ti-map-pin" aria-hidden="true"></i> Live map</button>
-    <button class="tab" onclick="switchTab('cameras',this)"><i class="ti ti-camera" aria-hidden="true"></i> Cameras</button>
-    <button class="tab" onclick="switchTab('history',this)"><i class="ti ti-calendar" aria-hidden="true"></i> History</button>
-    <button class="tab" onclick="switchTab('alerts',this)"><i class="ti ti-bell" aria-hidden="true"></i> Alerts</button>
-  </div>
-
-  <div id="panel-live" class="panel active">
-    <div class="filter-row">
-      <button class="btn active" onclick="filterType('all',this)">All</button>
-      <button class="btn" onclick="filterType('crash',this)">Crashes</button>
-      <button class="btn" onclick="filterType('incident',this)">Incidents</button>
-      <button class="btn" onclick="filterType('roadwork',this)">Roadworks</button>
-      <select id="suburb-filter" onchange="renderAll()">
-        <option value="">All suburbs</option>
-      </select>
-    </div>
-    <div id="map-container">
-      <svg id="map-svg" viewBox="0 0 680 340" xmlns="http://www.w3.org/2000/svg">
-        <rect width="680" height="340" fill="#dde8dd"/>
-        <text x="340" y="175" text-anchor="middle" font-size="13" fill="#888" font-family="sans-serif">Loading map...</text>
-      </svg>
-    </div>
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:#E24B4A"></div>Crash</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#EF9F27"></div>Incident</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#378ADD"></div>Roadwork</div>
-    </div>
-    <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:6px" id="list-label">Loading...</div>
-    <div id="incident-list"><div class="loading">Fetching incidents...</div></div>
-  </div>
-
-  <div id="panel-cameras" class="panel">
-    <div class="filter-row">
-      <select id="cam-suburb" onchange="filterCams()">
-        <option value="">All areas</option>
-        <option value="city">CBD / Inner City</option>
-        <option value="north">North Sydney</option>
-        <option value="west">Western Sydney</option>
-        <option value="south">South Sydney</option>
-        <option value="east">Eastern Suburbs</option>
-      </select>
-      <span style="font-size:12px;color:var(--color-text-secondary)" id="cam-count"></span>
-    </div>
-    <div id="cam-grid" class="cam-grid"><div class="loading">Loading cameras...</div></div>
-  </div>
-
-  <div id="panel-history" class="panel">
-    <div class="hist-controls">
-      <span class="hist-label">Date range:</span>
-      <input type="date" id="date-from" onchange="loadHistory()">
-      <span class="hist-label">to</span>
-      <input type="date" id="date-to" onchange="loadHistory()">
-      <select id="hist-type" onchange="loadHistory()">
-        <option value="all">All types</option>
-        <option value="crash">Crashes only</option>
-        <option value="incident">Incidents only</option>
-        <option value="roadwork">Roadworks only</option>
-      </select>
-    </div>
-    <div id="hist-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem"></div>
-    <div id="hist-list"><div class="no-data">Select a date range to view history</div></div>
-  </div>
-
-  <div id="panel-alerts" class="panel">
-    <div class="notif-card">
-      <div class="notif-title"><i class="ti ti-bell" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:5px"></i>Push notifications</div>
-      <div class="notif-sub">Get alerted when new incidents are detected near your saved suburbs</div>
-      <div class="notif-row">
-        <span class="notif-name">Enable notifications</span>
-        <label class="toggle"><input type="checkbox" id="notif-master" onchange="toggleNotifications(this)"><span class="slider-tog"></span></label>
-      </div>
-      <div class="notif-row">
-        <span class="notif-name">Crashes only</span>
-        <label class="toggle"><input type="checkbox" id="notif-crash" checked><span class="slider-tog"></span></label>
-      </div>
-      <div class="notif-row">
-        <span class="notif-name">All incidents</span>
-        <label class="toggle"><input type="checkbox" id="notif-all"><span class="slider-tog"></span></label>
-      </div>
-      <div class="notif-row">
-        <span class="notif-name">Roadworks</span>
-        <label class="toggle"><input type="checkbox" id="notif-rw"><span class="slider-tog"></span></label>
-      </div>
-    </div>
-
-    <div class="notif-card">
-      <div class="notif-title"><i class="ti ti-map-pin" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:5px"></i>Watch suburbs</div>
-      <div class="notif-sub">Add suburbs to monitor — you will be notified when incidents occur there</div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input type="text" id="suburb-input" placeholder="e.g. Parramatta" style="flex:1;padding:6px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:13px;background:var(--color-background-primary);color:var(--color-text-primary)">
-        <button class="btn" onclick="addWatchSuburb()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
-      </div>
-      <div id="watch-list"></div>
-    </div>
-
-    <div class="notif-card">
-      <div class="notif-title"><i class="ti ti-history" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:5px"></i>Recent alerts</div>
-      <div id="alert-history"><div style="font-size:13px;color:var(--color-text-secondary)">No alerts yet. Enable notifications above to start receiving alerts.</div></div>
-    </div>
-  </div>
-</div>
-
-<script>
-let allData = [];
-let camData = [];
-let currentType = 'all';
-let watchSuburbs = [];
-let notifEnabled = false;
-let alertLog = [];
-let prevCrashCount = -1;
-
-const BOUNDS = {minLat:-34.2,maxLat:-33.4,minLng:150.5,maxLng:151.4};
-const W=680,H=340;
-
-function lx(lng){return((lng-BOUNDS.minLng)/(BOUNDS.maxLng-BOUNDS.minLng))*W}
-function ly(lat){return((BOUNDS.maxLat-lat)/(BOUNDS.maxLat-BOUNDS.minLat))*H}
-
-function getColor(type){
-  if(!type)return'#1D9E75';
-  const t=type.toLowerCase();
-  if(t.includes('crash')||t.includes('accident'))return'#E24B4A';
-  if(t.includes('road')||t.includes('work'))return'#378ADD';
-  return'#EF9F27';
-}
-function getLabel(type){
-  if(!type)return'other';
-  const t=type.toLowerCase();
-  if(t.includes('crash')||t.includes('accident'))return'crash';
-  if(t.includes('road')||t.includes('work'))return'roadwork';
-  return'incident';
-}
-function getBadge(type){
-  const t=getLabel(type);
-  if(t==='crash')return'background:#FCEBEB;color:#A32D2D';
-  if(t==='roadwork')return'background:#E6F1FB;color:#185FA5';
-  return'background:#FAEEDA;color:#854F0B';
-}
-
-function switchTab(name,btn){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('panel-'+name).classList.add('active');
-  if(name==='cameras'&&camData.length===0)loadCameras();
-}
-
-async function fetchType(type){
-  try{
-    const url=`https://api.allorigins.win/raw?url=${encodeURIComponent('http://data.livetraffic.com/traffic/hazards/'+type+'.json')}`;
-    const r=await fetch(url);
-    const d=await r.json();
-    return(d.features||[]).map(f=>({...f,_type:type}));
-  }catch(e){return[];}
-}
-
-async function loadAll(){
-  document.getElementById('last-updated').textContent='Updating...';
-  const [crashes,incidents,roadworks]=await Promise.all([
-    fetchType('crash'),fetchType('incident'),fetchType('roadwork')
-  ]);
-  allData=[...crashes,...incidents,...roadworks];
-
-  const cc=crashes.length,ic=incidents.length,rc=roadworks.length;
-  document.getElementById('s-crash').textContent=cc;
-  document.getElementById('s-inc').textContent=ic;
-  document.getElementById('s-rw').textContent=rc;
-  document.getElementById('s-total').textContent=allData.length;
-  document.getElementById('last-updated').textContent='Updated '+new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'});
-
-  buildSuburbFilter();
-  renderAll();
-  checkNotifications(crashes);
-  if(prevCrashCount===-1)prevCrashCount=cc;
-}
-
-function buildSuburbFilter(){
-  const suburbs=new Set();
-  allData.forEach(f=>{
-    const s=f.properties?.roads?.[0]?.suburb;
-    if(s)suburbs.add(s);
-  });
-  const sel=document.getElementById('suburb-filter');
-  const cur=sel.value;
-  sel.innerHTML='<option value="">All suburbs</option>';
-  [...suburbs].sort().forEach(s=>{
-    const o=document.createElement('option');
-    o.value=s;o.textContent=s;
-    if(s===cur)o.selected=true;
-    sel.appendChild(o);
-  });
-}
-
-function filterType(type,btn){
-  currentType=type;
-  document.querySelectorAll('.filter-row .btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderAll();
-}
-
-function renderAll(){
-  const suburb=document.getElementById('suburb-filter').value;
-  let filtered=allData;
-  if(currentType!=='all')filtered=filtered.filter(f=>getLabel(f.properties?.mainCategory||f._type)===currentType);
-  if(suburb)filtered=filtered.filter(f=>f.properties?.roads?.[0]?.suburb===suburb);
-  document.getElementById('list-label').textContent=filtered.length+' incidents'+(suburb?' in '+suburb:'');
-  renderMap(filtered);
-  renderList(filtered);
-}
-
-function renderMap(data){
-  const svg=document.getElementById('map-svg');
-  let h=`<rect width="680" height="340" fill="#dde8dd"/>`;
-  h+=`<rect x="150" y="50" width="380" height="240" rx="6" fill="#c8d8c8" opacity="0.4"/>`;
-  h+=`<circle cx="${Math.round(lx(151.2093))}" cy="${Math.round(ly(-33.8688))}" r="5" fill="#888" opacity="0.6"/>`;
-  h+=`<text x="${Math.round(lx(151.2093))+7}" y="${Math.round(ly(-33.8688))+4}" font-size="10" fill="#666" font-family="sans-serif">CBD</text>`;
-
-  const shown=data.slice(0,200);
-  shown.forEach(f=>{
-    const c=f.geometry?.coordinates;
-    if(!c)return;
-    const lng=c[0],lat=c[1];
-    if(lng<BOUNDS.minLng||lng>BOUNDS.maxLng||lat<BOUNDS.minLat||lat>BOUNDS.maxLat)return;
-    const x=Math.round(lx(lng)),y=Math.round(ly(lat));
-    const color=getColor(f.properties?.mainCategory||f._type);
-    const title=(f.properties?.headline||f.properties?.mainCategory||'Incident').replace(/</g,'&lt;');
-    h+=`<circle cx="${x}" cy="${y}" r="5" fill="${color}" opacity="0.85" stroke="white" stroke-width="1.2"><title>${title}</title></circle>`;
-  });
-  svg.innerHTML=h;
-}
-
-function renderList(data){
-  const list=document.getElementById('incident-list');
-  if(!data.length){list.innerHTML='<div class="no-data">No incidents found.</div>';return;}
-  list.innerHTML=data.slice(0,60).map(f=>{
-    const p=f.properties||{};
-    const type=p.mainCategory||f._type||'Incident';
-    const color=getColor(type);
-    const label=getLabel(type);
-    const title=p.headline||p.mainCategory||'Incident';
-    const road=p.roads?.[0];
-    const sub=[road?.suburb,road?.locationQualityName].filter(Boolean).join(' — ')||'';
-    const time=p.created?new Date(p.created).toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'}):'';
-    return`<div class="inc-item">
-      <div class="inc-row">
-        <div class="inc-dot" style="background:${color}"></div>
-        <div style="flex:1;min-width:0">
-          <div class="inc-title">${title}</div>
-          ${sub?`<div class="inc-sub">${sub}</div>`:''}
-          <div class="inc-meta">
-            <span class="badge" style="${getBadge(type)}">${label}</span>
-            ${time?`<span style="font-size:11px;color:var(--color-text-secondary)">${time}</span>`:''}
-          </div>
+        <div class="space-y-4" id="weatherLogs">
+            <!-- Data will load here dynamically -->
+            <p class="text-center text-sm text-slate-500 animate-pulse">Loading live conditions...</p>
         </div>
-      </div>
-    </div>`;
-  }).join('');
-  if(data.length>60)list.innerHTML+=`<div class="no-data" style="font-size:12px">Showing 60 of ${data.length}</div>`;
-}
+    </div>
 
-async function loadCameras(){
-  document.getElementById('cam-grid').innerHTML='<div class="loading">Loading cameras...</div>';
-  try{
-    const url=`https://api.allorigins.win/raw?url=${encodeURIComponent('https://opendata.transport.nsw.gov.au/data/dataset/b0212311-b0da-4363-8dc3-825fe10941b2/resource/cc776d1a-d96c-4ae4-a465-c380a53717c9/download/livetrafficcamera.json')}`;
-    const r=await fetch(url);
-    const d=await r.json();
-    camData=(d.features||[]).slice(0,60);
-    document.getElementById('cam-count').textContent=camData.length+' cameras loaded';
-    filterCams();
-  }catch(e){
-    document.getElementById('cam-grid').innerHTML='<div class="no-data">Could not load camera data. Try refreshing.</div>';
-  }
-}
+    <script>
+        // Coordinates for main Sydney transport hubs
+        const hubs = [
+            { name: "Central Station", lat: -33.8831, lon: 151.2065 },
+            { name: "Circular Quay", lat: -33.8617, lon: 151.2108 },
+            { name: "Parramatta Interchange", lat: -33.8169, lon: 151.0034 },
+            { name: "Chatswood Interchange", lat: -33.7972, lon: 151.1812 }
+        ];
 
-function filterCams(){
-  const area=document.getElementById('cam-suburb').value;
-  const areaMap={
-    city:[-33.90,-33.85,151.18,151.23],
-    north:[-33.85,-33.75,151.18,151.28],
-    west:[-33.92,-33.70,150.85,151.05],
-    south:[-34.05,-33.90,151.00,151.20],
-    east:[-33.92,-33.83,151.22,151.32]
-  };
-  let cams=camData;
-  if(area&&areaMap[area]){
-    const[minLat,maxLat,minLng,maxLng]=areaMap[area];
-    cams=camData.filter(c=>{
-      const coords=c.geometry?.coordinates;
-      if(!coords)return false;
-      return coords[1]>=minLat&&coords[1]<=maxLat&&coords[0]>=minLng&&coords[0]<=maxLng;
-    });
-  }
-  document.getElementById('cam-count').textContent=cams.length+' cameras';
-  const grid=document.getElementById('cam-grid');
-  if(!cams.length){grid.innerHTML='<div class="no-data">No cameras in this area.</div>';return;}
-  grid.innerHTML=cams.slice(0,24).map(c=>{
-    const p=c.properties||{};
-    const imgUrl=p.href||p.imageUrl||'';
-    const name=p.title||p.name||'Camera';
-    const loc=p.region||p.suburb||'';
-    const liveUrl=`https://www.livetraffic.com`;
-    return`<div class="cam-card">
-      <div class="cam-thumb">
-        ${imgUrl?`<img src="${imgUrl}" alt="${name}" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`:''}
-        <div class="cam-thumb-placeholder" style="${imgUrl?'display:none':'display:flex;flex-direction:column;align-items:center;justify-content:center'}">
-          <i class="ti ti-camera" aria-hidden="true" style="font-size:24px;margin-bottom:4px;color:var(--color-text-secondary)"></i>
-          <span>Live feed</span>
-        </div>
-      </div>
-      <div class="cam-info">
-        <div class="cam-name">${name}</div>
-        ${loc?`<div class="cam-loc">${loc}</div>`:''}
-        <a href="${liveUrl}" class="cam-link" target="_blank"><i class="ti ti-external-link" aria-hidden="true" style="font-size:11px"></i> View live</a>
-      </div>
-    </div>`;
-  }).join('');
-}
+        async function fetchHubWeather() {
+            const container = document.getElementById('weatherLogs');
+            container.innerHTML = ''; // Clear loading text
 
-function loadHistory(){
-  const from=document.getElementById('date-from').value;
-  const to=document.getElementById('date-to').value;
-  const type=document.getElementById('hist-type').value;
-  if(!from||!to){document.getElementById('hist-list').innerHTML='<div class="no-data">Please select both a start and end date.</div>';return;}
+            for (const hub of hubs) {
+                try {
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${hub.lat}&longitude=${hub.lon}&current=temperature_2m,wind_speed_10m`;
+                    const response = await fetch(url);
+                    
+                    if (!response.ok) throw new Error("Network issue");
+                    const data = await response.json();
 
-  const fromDate=new Date(from),toDate=new Date(to);
-  toDate.setHours(23,59,59);
+                    // Render weather block
+                    const row = document.createElement('div');
+                    row.className = "flex justify-between items-center bg-slate-750 p-4 rounded-xl border border-slate-700/50 hover:border-emerald-500/30 transition";
+                    row.innerHTML = `
+                        <div>
+                            <h3 class="font-semibold text-white">${hub.name}</h3>
+                            <p class="text-xs text-slate-400">💨 Wind: ${data.current.wind_speed_10m} km/h</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xl font-bold text-emerald-400">${data.current.temperature_2m}°C</span>
+                        </div>
+                    `;
+                    container.appendChild(row);
 
-  let filtered=allData.filter(f=>{
-    const created=f.properties?.created;
-    if(!created)return false;
-    const d=new Date(created);
-    return d>=fromDate&&d<=toDate;
-  });
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        }
 
-  if(type!=='all')filtered=filtered.filter(f=>getLabel(f.properties?.mainCategory||f._type)===type);
-
-  const cc=filtered.filter(f=>getLabel(f.properties?.mainCategory||f._type)==='crash').length;
-  const ic=filtered.filter(f=>getLabel(f.properties?.mainCategory||f._type)==='incident').length;
-  const rc=filtered.filter(f=>getLabel(f.properties?.mainCategory||f._type)==='roadwork').length;
-
-  document.getElementById('hist-stats').innerHTML=`
-    <div class="stat"><div class="stat-num" style="color:#E24B4A">${cc}</div><div class="stat-label">Crashes</div></div>
-    <div class="stat"><div class="stat-num" style="color:#EF9F27">${ic}</div><div class="stat-label">Incidents</div></div>
-    <div class="stat"><div class="stat-num" style="color:#378ADD">${rc}</div><div class="stat-label">Roadworks</div></div>`;
-
-  const list=document.getElementById('hist-list');
-  if(!filtered.length){list.innerHTML='<div class="no-data">No incidents found for this date range.</div>';return;}
-  list.innerHTML=`<div id="incident-list">`+filtered.slice(0,50).map(f=>{
-    const p=f.properties||{};
-    const type2=p.mainCategory||f._type||'Incident';
-    const color=getColor(type2);
-    const label=getLabel(type2);
-    const title=p.headline||p.mainCategory||'Incident';
-    const road=p.roads?.[0];
-    const sub=[road?.suburb,road?.locationQualityName].filter(Boolean).join(' — ')||'';
-    const time=p.created?new Date(p.created).toLocaleString('en-AU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-    return`<div class="inc-item" style="border-bottom:0.5px solid var(--color-border-tertiary);padding:10px 14px">
-      <div class="inc-row">
-        <div class="inc-dot" style="background:${color}"></div>
-        <div style="flex:1;min-width:0">
-          <div class="inc-title">${title}</div>
-          ${sub?`<div class="inc-sub">${sub}</div>`:''}
-          <div class="inc-meta">
-            <span class="badge" style="${getBadge(type2)}">${label}</span>
-            ${time?`<span style="font-size:11px;color:var(--color-text-secondary)">${time}</span>`:''}
-          </div>
-        </div>
-      </div>
-    </div>`;
-  }).join('')+`</div>`;
-  if(filtered.length>50)list.innerHTML+=`<div class="no-data" style="font-size:12px">Showing 50 of ${filtered.length}</div>`;
-}
-
-function toggleNotifications(cb){
-  notifEnabled=cb.checked;
-  if(notifEnabled&&'Notification' in window){
-    Notification.requestPermission().then(p=>{
-      if(p==='granted'){
-        showBanner('Notifications enabled! You will be alerted when new crashes are detected.','success');
-      }else{
-        showBanner('Notification permission denied. Alerts will show in the app instead.','info');
-      }
-    });
-  }else if(notifEnabled){
-    showBanner('In-app alerts enabled for new incidents.','info');
-  }
-}
-
-function checkNotifications(crashes){
-  if(!notifEnabled)return;
-  const crashOnly=document.getElementById('notif-crash')?.checked;
-  const newCrashes=crashes.length;
-  if(prevCrashCount>0&&newCrashes>prevCrashCount){
-    const diff=newCrashes-prevCrashCount;
-    const msg=`${diff} new crash${diff>1?'es':''} detected in Sydney`;
-    logAlert(msg,'crash');
-    if(notifEnabled&&'Notification' in window&&Notification.permission==='granted'&&crashOnly){
-      new Notification('Sydney Traffic Alert',{body:msg,icon:''});
-    }else{
-      showBanner(msg,'danger');
-    }
-  }
-  prevCrashCount=newCrashes;
-
-  if(watchSuburbs.length>0){
-    allData.forEach(f=>{
-      const suburb=f.properties?.roads?.[0]?.suburb;
-      if(suburb&&watchSuburbs.includes(suburb.toLowerCase())){
-        const title=f.properties?.headline||f.properties?.mainCategory||'Incident';
-        logAlert(`Incident in ${suburb}: ${title}`,getLabel(f.properties?.mainCategory||f._type));
-      }
-    });
-  }
-}
-
-function logAlert(msg,type){
-  alertLog.unshift({msg,type,time:new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})});
-  alertLog=alertLog.slice(0,10);
-  renderAlertLog();
-}
-
-function renderAlertLog(){
-  const el=document.getElementById('alert-history');
-  if(!alertLog.length){el.innerHTML='<div style="font-size:13px;color:var(--color-text-secondary)">No alerts yet.</div>';return;}
-  el.innerHTML=alertLog.map(a=>`<div style="padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;gap:8px;align-items:flex-start">
-    <div class="inc-dot" style="background:${getColor(a.type)};margin-top:5px"></div>
-    <div style="flex:1"><div style="font-size:13px;color:var(--color-text-primary)">${a.msg}</div>
-    <div style="font-size:11px;color:var(--color-text-secondary)">${a.time}</div></div>
-  </div>`).join('');
-}
-
-function showBanner(msg,type){
-  const b=document.getElementById('notif-banner');
-  b.textContent=msg;
-  b.style.display='block';
-  b.style.background=type==='danger'?'var(--color-background-danger)':'var(--color-background-info)';
-  b.style.color=type==='danger'?'var(--color-text-danger)':'var(--color-text-info)';
-  b.style.borderColor=type==='danger'?'var(--color-border-danger)':'var(--color-border-info)';
-  setTimeout(()=>b.style.display='none',5000);
-}
-
-function addWatchSuburb(){
-  const input=document.getElementById('suburb-input');
-  const val=input.value.trim().toLowerCase();
-  if(!val||watchSuburbs.includes(val))return;
-  watchSuburbs.push(val);
-  input.value='';
-  renderWatchList();
-}
-
-function removeSuburb(s){
-  watchSuburbs=watchSuburbs.filter(x=>x!==s);
-  renderWatchList();
-}
-
-function renderWatchList(){
-  const el=document.getElementById('watch-list');
-  if(!watchSuburbs.length){el.innerHTML='<div style="font-size:13px;color:var(--color-text-secondary)">No suburbs added yet.</div>';return;}
-  el.innerHTML=watchSuburbs.map(s=>`<div style="display:inline-flex;align-items:center;gap:6px;background:var(--color-background-info);color:var(--color-text-info);padding:4px 10px;border-radius:12px;font-size:12px;margin:3px">
-    ${s.charAt(0).toUpperCase()+s.slice(1)}
-    <span onclick="removeSuburb('${s}')" style="cursor:pointer;font-size:14px;line-height:1;color:var(--color-text-info)">&times;</span>
-  </div>`).join('');
-}
-
-const today=new Date().toISOString().split('T')[0];
-const weekAgo=new Date(Date.now()-7*86400000).toISOString().split('T')[0];
-document.getElementById('date-from').value=weekAgo;
-document.getElementById('date-to').value=today;
-
-loadAll();
-setInterval(loadAll,60000);
-</script>
+        // Run on page load
+        fetchHubWeather();
+    </script>
 </body>
 </html>
